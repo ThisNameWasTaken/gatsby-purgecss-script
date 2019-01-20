@@ -2,7 +2,11 @@
 const path = require('path');
 const glob = require('glob');
 const PurgeCss = require('purgecss');
-const { writeFileSync, readFileSync } = require('fs');
+const { promisify } = require('util');
+const { readFile: _readFile, writeFile: _writeFile } = require('fs');
+
+const writeFile = promisify(_writeFile);
+const readFile = promisify(_readFile);
 
 const PATHS = {
   public: path.join(__dirname, '../public')
@@ -48,46 +52,46 @@ const purgeCss = new PurgeCss({
 
 const purgeResult = purgeCss.purge();
 
-// Write the resulted css in each css file
-purgeResult.forEach(key => writeFileSync(key.file, key.css)); // TODO: Write each file async
+(async () => {
+  // Write the resulted css in each css file
+  await Promise.all(purgeResult.map(key => writeFile(key.file, key.css))); // start removing css selectors only after the css files have been written
 
-// Remove the unsued css from the inlined styles inside the html files
-glob(`${PATHS.public}/**/*.html`, (err, files) =>
-  files.forEach(file => {
-    let html = readFileSync(file, 'utf8');  // TODO: Read each file async
+  // Remove the unsued css from the inlined styles inside the html files
+  glob(`${PATHS.public}/**/*.html`, (err, files) =>
+    files.forEach(async file => {
+      let html = await readFile(file, 'utf8');
 
-    // Purge the css inside each inlined style tag
-    purgeResult.forEach(key => {
-      const cssFileName = path.basename(key.file);
-      const styleTagMatches = html.match(new RegExp(`<style data-href="/${RegExp.escape(cssFileName)}">([\\s\\S]*?)</style>`));
+      // Purge the css inside each inlined style tag
+      purgeResult.forEach(key => {
+        const cssFileName = path.basename(key.file);
+        const styleTagMatches = html.match(new RegExp(`<style data-href="/${RegExp.escape(cssFileName)}">([\\s\\S]*?)</style>`));
 
-      if (!styleTagMatches) { return; }
+        if (!styleTagMatches) { return; }
 
-      const inlinedStyles = styleTagMatches[1];
+        const inlinedStyles = styleTagMatches[1];
 
-      if (!inlinedStyles) { return; }
+        if (!inlinedStyles) { return; }
 
-      // Since the css files have already been purged, we can use them to only keep the needed selectors
-      const purgeCss = new PurgeCss({
-        extractors: [{
-          extractor: PurgeInlinedStyles,
-          extensions: ['css'],
-        }],
-        content: [{
-          raw: key.css,
-          extension: 'css'
-        }],
-        css: [{ raw: inlinedStyles }],
+        // Since the css files have already been purged, we can use them to only keep the needed selectors
+        const purgeCss = new PurgeCss({
+          extractors: [{
+            extractor: PurgeInlinedStyles,
+            extensions: ['css'],
+          }],
+          content: [{
+            raw: key.css,
+            extension: 'css'
+          }],
+          css: [{ raw: inlinedStyles }],
+        });
+
+        const purgedInlinedStyles = purgeCss.purge()[0].css;
+
+        html = html.replace(inlinedStyles, purgedInlinedStyles);
       });
 
-      const purgedInlinedStyles = purgeCss.purge()[0].css;
-
-      html = html.replace(inlinedStyles, purgedInlinedStyles);
-    });
-
-    // Update the file
-    writeFileSync(file, html, 'utf8'); // TODO: Write this file async
-  })
-);
-
-// TODO: Use async functions for reading and writing files
+      // Update the file
+      writeFile(file, html, 'utf8');
+    })
+  );
+})()
