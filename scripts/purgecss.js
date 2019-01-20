@@ -9,7 +9,8 @@ const writeFile = promisify(_writeFile);
 const readFile = promisify(_readFile);
 
 const PATHS = {
-  public: path.join(__dirname, '../public')
+  public: path.join(__dirname, '../public'),
+  node_modules: path.join(__dirname, '../node_modules')
 }
 
 /**
@@ -41,10 +42,16 @@ const purgeCss = new PurgeCss({
   extractors: [{
     extractor: PurgeHtmlBody, // Only purge the body so we do not take into account the selectors from the inlined styles (which are not yet purged)
     extensions: ['html'],
+  }, {
+    extractor: PurgeInlinedStyles,
+    extensions: ['js', 'jsx', 'ts', 'tsx']
   }],
-  content: [path.join(PATHS.public, '/**/*.html')],
+  content: [
+    path.join(PATHS.public, '/**/*.html'),
+    path.join(PATHS.node_modules, '/@material/!(react-*)/**/!(*.d).{ts,js,jsx,tsx}'),
+  ],
   css: [path.join(PATHS.public, '/**/*.css')],
-  whitelistPatterns: [/-upgraded/, /-ripple/], // Keep selectors that match this patterns
+  // whitelistPatterns: [/-upgraded/, /-ripple/], // Keep selectors that match this patterns
   // TODO: Check purgecss' keyframes purging algorithm, since it does not seem to work for multiple animations
   // keyframes: true, // Remove unused keyframes
   fontFace: true // Remove unsued @font-face rules 
