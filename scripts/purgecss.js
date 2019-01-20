@@ -22,7 +22,7 @@ RegExp.escape = function (string) {
 
 const extractorPattern = /[A-Za-z0-9-_:\/]+/g;
 
-class PurgeHtmlBody {
+class HtmlBodyExtractor {
   static extract(content) {
     const body = content.match(/<body>[\s\S]+<\/body>/)[0];
 
@@ -32,7 +32,7 @@ class PurgeHtmlBody {
   }
 }
 
-class PurgeInlinedStyles {
+class DefaultExtractor {
   static extract(content) {
     return content.match(extractorPattern) || [];
   }
@@ -40,10 +40,10 @@ class PurgeInlinedStyles {
 
 const purgeCss = new PurgeCss({
   extractors: [{
-    extractor: PurgeHtmlBody, // Only purge the body so we do not take into account the selectors from the inlined styles (which are not yet purged)
+    extractor: HtmlBodyExtractor, // Only purge the body so we do not take into account the selectors from the inlined styles (which are not yet purged)
     extensions: ['html'],
   }, {
-    extractor: PurgeInlinedStyles,
+    extractor: DefaultExtractor,
     extensions: ['js', 'jsx', 'ts', 'tsx']
   }],
   content: [
@@ -82,7 +82,7 @@ const purgeResult = purgeCss.purge();
         // Since the css files have already been purged, we can use them to only keep the needed selectors
         const purgeCss = new PurgeCss({
           extractors: [{
-            extractor: PurgeInlinedStyles,
+            extractor: DefaultExtractor,
             extensions: ['css'],
           }],
           content: [{
