@@ -45,7 +45,9 @@ const purgeCss = new PurgeCss({
   ],
   css: [path.join(PATHS.public, '/**/*.css')],
   // whitelistPatterns: [/-upgraded/, /-ripple/], // Keep selectors that match this patterns
-  // TODO: Check purgecss' keyframes purging algorithm, since it does not seem to work for multiple animations
+  // Purgecss' keyframes purging algorithm does not seem to work for multiple animations if there is no space in between the comma and the next animation name (i.e. ... ease,second-animation ...)
+  // For now I recommend disabling the keyframes option if your stylesheets contain multiple animations
+  // I have currently opened an issue on their github page and added a PR with the fix for it
   keyframes: true, // Remove unused keyframes
   fontFace: true, // Remove unsued @font-face rules
   // rejected: true,
