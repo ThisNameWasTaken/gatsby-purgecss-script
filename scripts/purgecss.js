@@ -58,11 +58,11 @@ const purgeCss = new PurgeCss({
   // rejected: true,
 });
 
-const purgeResult = purgeCss.purge();
+const purgeResults = purgeCss.purge();
 
 (async () => {
   // Write the resulted css in each css file
-  await Promise.all(purgeResult.map(key => writeFile(key.file, key.css))); // start removing css selectors only after the css files have been written
+  await Promise.all(purgeResults.map(key => writeFile(key.file, key.css))); // start removing css selectors only after the css files have been written
 
   // Remove the unsued css from the inlined styles inside the html files
   glob(`${PATHS.public}/**/*.html`, (err, files) =>
@@ -74,27 +74,26 @@ const purgeResult = purgeCss.purge();
       styleTags.forEach(styleTag => {
         const [, cssFile, inlinedStyles] = styleTag.match(/<style data-href="\/(.*?)">(.*?)<\/style>/m);
 
-        for (let i = 0; i < purgeResult.length; i++) {
-          if (path.basename(purgeResult[i].file) === cssFile) {
-            const purgeCss = new PurgeCss({
-              extractors: [{
-                extractor: DefaultExtractor,
-                extensions: ['css'],
-              }],
-              content: [{
-                raw: purgeResult[i].css,
-                extension: 'css'
-              }],
-              css: [{ raw: inlinedStyles }],
-              rejected: true,
-            });
+        const purgedCss = purgeResults.find(result => path.basename(result.file) === cssFile).css;
 
-            const purgedInlinedStyles = purgeCss.purge()[0].css;
-            html = html.replace(inlinedStyles, purgedInlinedStyles);
+        // since the css files have already been purged
+        // we use the selector inside them to remove
+        // the unsued selectors from the inlined styles
+        const purgeCss = new PurgeCss({
+          extractors: [{
+            extractor: DefaultExtractor,
+            extensions: ['css'],
+          }],
+          content: [{
+            raw: purgedCss,
+            extension: 'css'
+          }],
+          css: [{ raw: inlinedStyles }],
+          rejected: true,
+        });
 
-            break;
-          }
-        }
+        const purgedInlinedStyles = purgeCss.purge()[0].css;
+        html = html.replace(inlinedStyles, purgedInlinedStyles);
       });
 
       writeFile(file, html, 'utf8');
