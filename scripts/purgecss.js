@@ -13,13 +13,6 @@ const PATHS = {
   node_modules: path.join(__dirname, '../node_modules')
 }
 
-/**
- * @param {String} string
- */
-RegExp.escape = function (string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 const extractorPattern = /[A-Za-z0-9-_\/]+/g;
 
 class HtmlBodyExtractor {
